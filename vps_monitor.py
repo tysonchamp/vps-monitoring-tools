@@ -20,6 +20,9 @@ import urllib.request
 import argparse
 
 # ── Configuration & Setup ──
+# Initialise the logger.  The log‑file handler will be added
+# later, after command‑line arguments are parsed, so that the
+# user can enable file logging with `--log-file`.
 logger = logging.getLogger("VPSMonitor")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -132,10 +135,12 @@ def run_vps_checks(servers, thresholds, config):
                 alert_msg = f"⚠️ *VPS Alert: {name}*\n🕐 {now}\n" + "\n".join(alerts)
                 send_telegram(config, alert_msg)
 
+            print(f"[✓] {name} is UP | CPU: {cpu_percent:.1f}% | RAM: {ram_percent:.1f}% | Uptime: {uptime}")
             results.append((name, True, data))
 
         except Exception as e:
             logger.error(f"Failed to check {name}: {e}")
+            print(f"[✗] {name} is DOWN | Error: {e}")
             results.append((name, False, {"error": str(e)}))
 
         finally:
@@ -153,8 +158,8 @@ def run_website_checks(sites_list, config):
     default_headers = {
         "User-Agent": "Mozilla/5.0 (compatible; VPSMonitor/1.0; +https://yourdomain.com)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "close",
+        "Connection": "keep-alive",
+        "Accept-Encoding": "gzip, deflate, br",
     }
 
     for site in sites_list:
@@ -189,6 +194,11 @@ def run_website_checks(sites_list, config):
         if status_code != 200:
             alert_text = f"🔴 *Website Alert: {name}*\n🕐 {now}\n🔗 {url}\nCode: {status_code} ({error_msg})\nTime: {response_time:.2f}s\n"
             send_telegram(config, alert_text)
+
+        if status_code == 200:
+            print(f"[✓] {name} is UP | Code: 200 | Time: {response_time:.2f}s")
+        else:
+            print(f"[✗] {name} is DOWN | Code: {status_code} | Error: {error_msg}")
 
         results.append({
             "name": name,
@@ -300,8 +310,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Integrated Monitor")
     parser.add_argument("--test", action="store_true", help="Run test mode")
     parser.add_argument("--once", action="store_true", help="Run one check and exit")
+    parser.add_argument("--log-file", help="Write logs to the specified file")
     args = parser.parse_args()
     cfg = load_config()
+
+    # Optional log file
+    if args.log_file:
+        file_handler = logging.FileHandler(args.log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        logger.info(f"Logging to file: {args.log_file}")
 
     if args.test:
         run_test(cfg)
