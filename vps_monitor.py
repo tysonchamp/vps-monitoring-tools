@@ -149,6 +149,14 @@ def run_website_checks(sites_list, config):
     results = []
     now = datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S")
 
+    # Default headers that mimic a real browser
+    default_headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; VPSMonitor/1.0; +https://yourdomain.com)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "close",
+    }
+
     for site in sites_list:
         url = site
         name = site
@@ -159,7 +167,7 @@ def run_website_checks(sites_list, config):
 
         try:
             start = time.time()
-            resp = requests.get(url, timeout=10)
+            resp = requests.get(url, headers=default_headers, timeout=10)
             response_time = time.time() - start
             status_code = resp.status_code
             resp.raise_for_status()
