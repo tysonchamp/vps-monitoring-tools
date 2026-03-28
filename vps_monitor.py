@@ -83,7 +83,7 @@ def run_command(client, command):
     stdin, stdout, stderr = client.exec_command(command)
     return stdout.read().decode().strip()
 
-def run_vps_checks(servers, thresholds):
+def run_vps_checks(servers, thresholds, config):
     """Check VPS health and return results list."""
     results = []
     now = datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S")
@@ -155,8 +155,8 @@ def run_website_checks(sites_list, config):
     now = datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S")
     
     for site in sites_list:
-        url = site["url"]
-        name = site.get("site_name", url)
+        url = site
+        name = site
         status_code = 200
         response_time = 0
         status = "up"
@@ -232,7 +232,7 @@ def run_checks(config):
     #global config # Ensure config is accessible in nested functions if needed
     
     # 1. Run VPS Checks
-    vps_results = run_vps_checks(config["servers"], config["thresholds"])
+    vps_results = run_vps_checks(config["servers"], config["thresholds"], config)
     
     # 2. Run Website Checks
     website_results = run_website_checks(config.get("websites", []), config)
