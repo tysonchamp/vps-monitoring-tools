@@ -176,6 +176,17 @@ def run_website_checks(sites_list, config):
             response_time = time.time() - start
             status_code = resp.status_code
             resp.raise_for_status()
+            # Detect redirects that indicate domain issues
+            if resp.history:
+                orig_netloc = urllib.parse.urlparse(url).netloc
+                final_netloc = urllib.parse.urlparse(resp.url).netloc
+                if not (
+                    urllib.parse.urlparse(url).scheme == "http"
+                    and urllib.parse.urlparse(resp.url).scheme == "https"
+                ):
+                    status = "error"
+                    error_msg = f"Redirected to {resp.url}"
+                    status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             if isinstance(e, requests.exceptions.ConnectionError):
                 status = "offline"
