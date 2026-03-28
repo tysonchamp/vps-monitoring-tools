@@ -1,43 +1,47 @@
 # ═══════════════════════════════════════════════
-#  VPS Server Monitor — Configuration
+#  Integrated VPS & Website Monitor — Configuration
 # ═══════════════════════════════════════════════
 
 telegram:
-  bot_token: "YOUR_BOT_TOKEN_HERE"      # Get from @BotFather
-  chat_id: "YOUR_CHAT_ID_HERE"          # Your Telegram chat ID
-
+  bot_token: "YOUR_BOT_TOKEN_HERE"
+  chat_id: "YOUR_CHAT_ID_HERE"
 # Monitoring interval in minutes
 check_interval_minutes: 10
 
-# Alert thresholds (percentage) — alerts fire when exceeded
+# Alert thresholds (percentage)
 thresholds:
   cpu_percent: 80
   ram_percent: 80
   disk_percent: 85
 
-# Send a full status summary every cycle (true) or only alerts (false)
+# Send a full status summary every cycle
 send_summary: true
 
-# ── Server List ─────────────────────────────
-# Each server needs: name, host, user
-# Auth: provide either 'password' or 'key_path' (SSH key)
-# Port defaults to 22 if omitted
+# ── Server List ──
 servers:
   - name: "Production VPS"
     host: "1.2.3.4"
     port: 22
     user: "root"
     password: "YOUR_PASSWORD"
-    # key_path: "/path/to/key.pem"
+    # Or use key_path: "/path/to/key.pem"
 
-  # - name: "Staging VPS"
-  #   host: "5.6.7.8"
-  #   port: 22
-  #   user: "root"
-  #   key_path: "~/.ssh/id_rsa"
+# ── Website List ──
+# Add any number of websites here
+  websites:
+  - url: "https://www.google.com"
+    site_name: "Google"
 
-  # - name: "Dev Server"
-  #   host: "9.10.11.12"
-  #   port: 2222
-  #   user: "admin"
-  #   password: "secret"
+  - url: "https://www.github.com"
+    site_name: "GitHub"
+
+  - url: "https://your-website.com"
+    site_name: "My Main Website"
+
+  # Example of a failing site for testing alerts
+  # - url: "https://httpbin.org/status/404"
+  #   site_name: "404 Test Site"
+
+monitoring:
+  # Optional: Specific timeout for website checks if different from default
+  website_timeout: 10
