@@ -394,7 +394,7 @@ def run_test(config):
     print("=" * 50 + "\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Integrated Monitor")
+    parser = argparse.ArgumentParser(description="VPS & Website Monitor")
     parser.add_argument("--test", action="store_true", help="Run test mode")
     parser.add_argument("--once", action="store_true", help="Run one check and exit")
     parser.add_argument("--log-file", help="Write logs to the specified file (overrides default)")
@@ -416,8 +416,22 @@ if __name__ == "__main__":
         interval = cfg.get("check_interval_minutes", 10)
         send_telegram(cfg, f"🟢 *Monitor Started*\nServers: {len(cfg['servers'])}\nWebsites: {len(cfg.get('websites', []))}\nInterval: {interval} min.")
         run_checks(cfg)
+
         import schedule
         schedule.every(interval).minutes.do(run_checks, cfg)
 
         def _shutdown(signum, frame):
-            send_telegram(cfg, "🔴 *Monitor Stopped*")
+            logger.info(f"Received signal {signum}. Shutting down gracefully...")
+            send_telegram(cfg, "🔴 *Monitor Stopped*\nReason: Signal received (Ctrl+C or system shutdown)")
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, _shutdown)
+        signal.signal(signal.SIGTERM, _shutdown)
+
+        logger.info("🟢 Monitor is now running continuously...")
+        logger.info("Press Ctrl+C to stop the monitor.")
+
+        # Main loop - runs indefinitely
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
