@@ -18,6 +18,7 @@ import paramiko
 import json
 import urllib.request
 import argparse
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
 # ── Configuration & Setup ──
 # Initialise the logger.  The log‑file handler will be added
@@ -30,7 +31,46 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# ── Helper Functions ──
+# ── Logging Setup Functions ──
+def setup_logging(args):
+    """Set up logging with rotating file handler."""
+    # Create logs directory if it doesn't exist
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Set log file path
+    log_file_path = os.path.join(log_dir, "monitor.log")
+    
+    # Remove existing handlers to avoid duplication
+    logger.handlers = []
+    
+    # Console handler (always enabled)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+    
+    # Rotating file handler (rotate when file reaches 5MB)
+    max_bytes = 5 * 1024 * 1024  # 5MB
+    backup_count = 5  # Keep last 5 rotated files
+    file_handler = RotatingFileHandler(
+        log_file_path,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+    )
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+    
+    logger.info(f"Logging configured. File: {log_file_path}")
+    logger.debug(f"Max log file size: {max_bytes / 1024 / 1024:.1f}MB")
+    logger.debug(f"Backup files retained: {backup_count}")
+
 def load_config(config_path="config.yaml"):
     """Load configuration from YAML file."""
     if not os.path.exists(config_path):
@@ -122,8 +162,16 @@ def run_vps_checks(servers, thresholds, config):
             try:
                 disk_output = run_command(client, "df -h / | tail -1 | awk '{print $5}'")
                 disk_percent = float(disk_output.replace('%', ''))
+                # Also get total and used for detailed reporting
+                disk_detail = run_command(client, "df -h / | tail -1")
+                parts = disk_detail.split()
+                if len(parts) >= 2:
+                    disk_total = parts[1]
+                    disk_used = parts[2]
+                    data["disk_detail"] = f"{disk_used} / {disk_total}"
             except Exception:
                 disk_percent = 0.0
+                data["disk_detail"] = "-"
 
             data = {
                 "uptime": uptime,
@@ -144,8 +192,18 @@ def run_vps_checks(servers, thresholds, config):
             if alerts:
                 alert_msg = f"⚠️ *VPS Alert: {name}*\n🕐 {now}\n" + "\n".join(alerts)
                 send_telegram(config, alert_msg)
+                logger.warning(f"Alert sent for {name}: {' | '.join(alerts)}")
 
-            print(f"[✓] {name} is UP | CPU: {cpu_percent:.1f}% | RAM: {ram_percent:.1f}% | Disk: {disk_percent}% | Uptime: {uptime}")
+            # Log success
+            log_msg = (
+                f"[✓] {name} is UP | "
+                f"CPU: {cpu_percent:.1f}% | "
+                f"RAM: {ram_percent:.1f}% | "
+                f"Disk: {disk_percent}% | "
+                f"Uptime: {uptime}"
+            )
+            logger.info(log_msg)
+            print(log_msg)
             results.append((name, True, data))
 
         except Exception as e:
@@ -215,11 +273,15 @@ def run_website_checks(sites_list, config):
         if status_code != 200:
             alert_text = f"🔴 *Website Alert: {name}*\n🕐 {now}\n🔗 {url}\nCode: {status_code} ({error_msg})\nTime: {response_time:.2f}s\n"
             send_telegram(config, alert_text)
-
-        if status_code == 200:
-            print(f"[✓] {name} is UP | Code: 200 | Time: {response_time:.2f}s")
+            logger.warning(f"Website alert: {name} - {status_code} - {error_msg}")
         else:
-            print(f"[✗] {name} is DOWN | Code: {status_code} | Error: {error_msg}")
+            log_msg = (
+                f"[✓] {name} is UP | "
+                f"Code: 200 | "
+                f"Time: {response_time:.2f}s"
+            )
+            logger.info(log_msg)
+            print(log_msg)
 
         results.append({
             "name": name,
@@ -275,6 +337,10 @@ def run_checks(config):
                 blocks.append(f"*🔴 {it['name']}*\nError: {it.get('error', 'Connection Lost')}")
 
         send_telegram(config, header + "\n\n".join(blocks))
+        logger.info(f"Summary report sent: {online} online, {down} down")
+
+    # Log completion
+    logger.info("✓ Check cycle completed successfully")
 
     return all_results
 
@@ -331,16 +397,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Integrated Monitor")
     parser.add_argument("--test", action="store_true", help="Run test mode")
     parser.add_argument("--once", action="store_true", help="Run one check and exit")
-    parser.add_argument("--log-file", help="Write logs to the specified file")
+    parser.add_argument("--log-file", help="Write logs to the specified file (overrides default)")
     args = parser.parse_args()
     cfg = load_config()
 
-    # Optional log file
+    # Setup logging (creates logs/ directory and configures handlers)
+    setup_logging(args)
+
+    # Optional custom log file path
     if args.log_file:
-        file_handler = logging.FileHandler(args.log_file)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-        logger.info(f"Logging to file: {args.log_file}")
+        logger.info(f"Using custom log file: {args.log_file}")
 
     if args.test:
         run_test(cfg)
@@ -355,11 +421,3 @@ if __name__ == "__main__":
 
         def _shutdown(signum, frame):
             send_telegram(cfg, "🔴 *Monitor Stopped*")
-            sys.exit(0)
-
-        signal.signal(signal.SIGINT, _shutdown)
-        signal.signal(signal.SIGTERM, _shutdown)
-
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
