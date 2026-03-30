@@ -118,10 +118,18 @@ def run_vps_checks(servers, thresholds, config):
             except Exception:
                 ram_percent = 0.0
 
+            # Disk Usage
+            try:
+                disk_output = run_command(client, "df -h / | tail -1 | awk '{print $5}'")
+                disk_percent = float(disk_output.replace('%', ''))
+            except Exception:
+                disk_percent = 0.0
+
             data = {
                 "uptime": uptime,
                 "cpu_percent": cpu_percent,
-                "ram_percent": ram_percent
+                "ram_percent": ram_percent,
+                "disk_percent": disk_percent
             }
 
             # Check thresholds
@@ -130,12 +138,14 @@ def run_vps_checks(servers, thresholds, config):
                 alerts.append(f"- CPU: {cpu_percent}% (Limit: {thresholds.get('cpu_percent')})")
             if ram_percent > thresholds.get("ram_percent", 80):
                 alerts.append(f"- RAM: {ram_percent:.1f}% (Limit: {thresholds.get('ram_percent')})")
+            if disk_percent > thresholds.get("disk_percent", 50):
+                alerts.append(f"- Disk: {disk_percent}% (Limit: {thresholds.get('disk_percent')})")
 
             if alerts:
                 alert_msg = f"⚠️ *VPS Alert: {name}*\n🕐 {now}\n" + "\n".join(alerts)
                 send_telegram(config, alert_msg)
 
-            print(f"[✓] {name} is UP | CPU: {cpu_percent:.1f}% | RAM: {ram_percent:.1f}% | Uptime: {uptime}")
+            print(f"[✓] {name} is UP | CPU: {cpu_percent:.1f}% | RAM: {ram_percent:.1f}% | Disk: {disk_percent}% | Uptime: {uptime}")
             results.append((name, True, data))
 
         except Exception as e:
@@ -231,7 +241,7 @@ def format_status_block(item):
 
     if "server_data" in item:
         data = item["server_data"]
-        return f"*✅ {name}*\n⏳ Uptime: {data.get('uptime', '-')}\n💻 CPU: {data.get('cpu_percent', '-')}%\n✅ Online"
+        return f"*✅ {name}*\n⏳ Uptime: {data.get('uptime', '-')}\n💻 CPU: {data.get('cpu_percent', '-')}%\n🧠 RAM: {data.get('ram_percent', '-')}%\n💾 Disk: {data.get('disk_percent', '-')}%\n✅ Online"
 
     # Website block
     return f"*✅ {name}*\n🔗 {item.get('url', '')}\n✅ HTTP {item.get('code', 200)}"
