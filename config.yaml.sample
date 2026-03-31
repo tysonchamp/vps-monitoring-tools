@@ -13,9 +13,12 @@ thresholds:
   cpu_percent: 80
   ram_percent: 80
   disk_percent: 85
+  # Include top processes in alerts if CPU or RAM thresholds are exceeded
+  report_top_processes: true
+  top_processes_count: 5
 
 # Send a full status summary every cycle
-send_summary: true
+send_summary: false
 
 # ── Server List ──
 servers:
@@ -29,18 +32,8 @@ servers:
 # ── Website List ──
 # Add any number of websites here
   websites:
-  - url: "https://www.google.com"
-    site_name: "Google"
-
-  - url: "https://www.github.com"
-    site_name: "GitHub"
-
-  - url: "https://your-website.com"
-    site_name: "My Main Website"
-
-  # Example of a failing site for testing alerts
-  # - url: "https://httpbin.org/status/404"
-  #   site_name: "404 Test Site"
+  # Add more websites here
+  - "https://example.com"
 
 monitoring:
   # Optional: Specific timeout for website checks if different from default

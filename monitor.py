@@ -183,15 +183,40 @@ def run_vps_checks(servers, thresholds, config):
 
             # Check thresholds
             alerts = []
+            top_cpu_output = ""
+            top_ram_output = ""
+
+            report_processes = thresholds.get("report_top_processes", True)
+            process_count = thresholds.get("top_processes_count", 5) + 1 # +1 for header
+
             if cpu_percent > thresholds.get("cpu_percent", 80):
-                alerts.append(f"- CPU: {cpu_percent}% (Limit: {thresholds.get('cpu_percent')})")
+                alerts.append(f"- CPU: {cpu_percent}% (Limit: {thresholds.get('cpu_percent')}%)")
+                if report_processes:
+                    try:
+                        cmd = f"ps -eo pid,user,%cpu,%mem,cmd --sort=-%cpu | head -n {process_count} | cut -c 1-70"
+                        top_cpu_output = run_command(client, cmd)
+                    except Exception as e:
+                        top_cpu_output = f"Error fetching processes: {e}"
+
             if ram_percent > thresholds.get("ram_percent", 80):
-                alerts.append(f"- RAM: {ram_percent:.1f}% (Limit: {thresholds.get('ram_percent')})")
+                alerts.append(f"- RAM: {ram_percent:.1f}% (Limit: {thresholds.get('ram_percent')}%)")
+                if report_processes:
+                    try:
+                        cmd = f"ps -eo pid,user,%cpu,%mem,cmd --sort=-%mem | head -n {process_count} | cut -c 1-70"
+                        top_ram_output = run_command(client, cmd)
+                    except Exception as e:
+                        top_ram_output = f"Error fetching processes: {e}"
+
             if disk_percent > thresholds.get("disk_percent", 50):
-                alerts.append(f"- Disk: {disk_percent}% (Limit: {thresholds.get('disk_percent')})")
+                alerts.append(f"- Disk: {disk_percent}% (Limit: {thresholds.get('disk_percent')}%)")
 
             if alerts:
                 alert_msg = f"⚠️ *VPS Alert: {name}*\n🕐 {now}\n" + "\n".join(alerts)
+                if top_cpu_output:
+                    alert_msg += f"\n\n🔥 *Top CPU Processes:*\n```\n{top_cpu_output}\n```"
+                if top_ram_output:
+                    alert_msg += f"\n\n🧠 *Top RAM Processes:*\n```\n{top_ram_output}\n```"
+                
                 send_telegram(config, alert_msg)
                 logger.warning(f"Alert sent for {name}: {' | '.join(alerts)}")
 
