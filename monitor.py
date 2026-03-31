@@ -476,7 +476,7 @@ if __name__ == "__main__":
         schedule.every(interval).minutes.do(run_checks, cfg)
         
         # Check for self-updates every 60 minutes
-        schedule.every(60).minutes.do(check_for_updates, cfg)
+        schedule.every(10).minutes.do(check_for_updates, cfg)
 
         def _shutdown(signum, frame):
             logger.info(f"Received signal {signum}. Shutting down gracefully...")
