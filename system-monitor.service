@@ -1,13 +1,13 @@
 [Unit]
-Description=VPS Server Monitor
+Description=System Monitor
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=tyson
-WorkingDirectory=/home/tyson/AiTools/monitoring-tools
-ExecStart=/usr/bin/python3 /home/tyson/AiTools/monitoring-tools/vps_monitor.py
+WorkingDirectory=/home/tyson/Tools/monitoring-tools
+ExecStart=/usr/bin/python3 /home/tyson/Tools/monitoring-tools/monitor.py
 Restart=always
 RestartSec=30
 StandardOutput=journal
@@ -16,7 +16,7 @@ StandardError=journal
 # Hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/home/tyson/AiTools/monitoring-tools/logs
+ReadWritePaths=/home/tyson/Tools/monitoring-tools/logs
 
 [Install]
 WantedBy=multi-user.target

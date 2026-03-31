@@ -49,21 +49,21 @@ Edit `config.yaml`:
 
 ```bash
 # Copy the service file
-sudo cp vps-monitor.service /etc/systemd/system/
+sudo cp system-monitor.service /etc/systemd/system/
 
 # Edit paths if needed
-sudo nano /etc/systemd/system/vps-monitor.service
+sudo nano /etc/systemd/system/system-monitor.service
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable vps-monitor
-sudo systemctl start vps-monitor
+sudo systemctl enable system-monitor
+sudo systemctl start system-monitor
 
 # Check status
-sudo systemctl status vps-monitor
+sudo systemctl status system-monitor
 
 # View logs
-journalctl -u vps-monitor -f
+journalctl -u system-monitor -f
 ```
 
 ## Telegram Message Preview
