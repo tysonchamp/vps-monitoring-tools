@@ -18,6 +18,7 @@ import paramiko
 import json
 import urllib.request
 import argparse
+import subprocess
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
 # ── Configuration & Setup ──
@@ -370,6 +371,34 @@ def run_checks(config):
 
     return all_results
 
+def check_for_updates(config):
+    """Fetch latest updates from git and restart the script if changes are detected."""
+    logger.info("Checking for script updates from git...")
+    try:
+        # Run git fetch first
+        subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True, text=True)
+        
+        # Run git pull
+        result = subprocess.run(["git", "pull", "origin"], check=True, capture_output=True, text=True)
+        
+        output = result.stdout.strip()
+        if "Already up to date." not in output:
+            logger.info("Updates pulled successfully. Restarting script...")
+            send_telegram(config, "🔄 *Monitor Auto-Update*\nNew updates fetched from git.\nRestarting monitor script...")
+            
+            # Allow a moment for the telegram message to be sent
+            time.sleep(2)
+            
+            # Restart the script
+            os.execv(sys.executable, ['python3'] + sys.argv)
+        else:
+            logger.debug("No updates found.")
+            
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to check for updates: {e.stderr or e.stdout}")
+    except Exception as e:
+        logger.error(f"Error during auto update: {e}")
+
 def run_test(config):
     """Test config, Telegram, and connections."""
     print("\n" + "=" * 50)
@@ -445,6 +474,9 @@ if __name__ == "__main__":
 
         import schedule
         schedule.every(interval).minutes.do(run_checks, cfg)
+        
+        # Check for self-updates every 60 minutes
+        schedule.every(60).minutes.do(check_for_updates, cfg)
 
         def _shutdown(signum, frame):
             logger.info(f"Received signal {signum}. Shutting down gracefully...")
