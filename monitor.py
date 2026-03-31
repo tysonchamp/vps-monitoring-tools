@@ -141,11 +141,12 @@ def run_vps_checks(servers, thresholds, config):
             client = ssh_connect(server)
 
             # Collect Metrics
-            uptime = run_command(client, "uptime -p").split()[0]
+            uptime = run_command(client, "uptime -p")
 
-            # CPU
             try:
-                cpu_load = run_command(client, "grep 'cpu(s)' /proc/loadavg | awk '{print $2}'")
+                # Get CPU usage percentage. top -bn1 gives a one-shot snapshot.
+                # We extract the idle percentage and subtract from 100.
+                cpu_load = run_command(client, "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'")
                 cpu_percent = float(cpu_load)
             except Exception:
                 cpu_percent = 0.0
